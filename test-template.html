@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>User Dashboard - Complex Template</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Dashboard</h1>
+        
+        {% if user.is_authenticated %}
+            <div class="user-info">
+                <h2>Hello, {{ user.name }}!</h2>
+                
+                {% if user.role == 'admin' %}
+                    <div class="admin-panel">
+                        <h3>Admin Controls</h3>
+                        <ul>
+                            {% for permission in user.permissions %}
+                                {% if permission.is_active %}
+                                    <li class="active">{{ permission.name }}</li>
+                                    {% if permission.requires_2fa %}
+                                        <span class="badge">2FA Required</span>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="inactive">{{ permission.name }} (Disabled)</li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                        
+                        {% if user.can_manage_users %}
+                            <section class="user-management">
+                                <h4>User Management</h4>
+                                {% for managed_user in all_users %}
+                                    {% if managed_user.id != user.id %}
+                                        <div class="user-card">
+                                            <span>{{ managed_user.name }}</span>
+                                            {% if managed_user.is_suspended %}
+                                                <button>Unsuspend</button>
+                                            {% elif managed_user.warning_count > 3 %}
+                                                <button>Review Account</button>
+                                            {% else %}
+                                                <button>Edit</button>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </section>
+                        {% endif %}
+                    </div>
+                    
+                {% elif user.role == 'moderator' %}
+                    <div class="moderator-panel">
+                        <h3>Moderator Tools</h3>
+                        {% if user.assigned_categories %}
+                            {% for category in user.assigned_categories %}
+                                <div class="category-section">
+                                    <h4>{{ category.name }}</h4>
+                                    {% if category.pending_items > 0 %}
+                                        <div class="pending-queue">
+                                            {% for item in category.items %}
+                                                {% if item.status == 'pending' %}
+                                                    <div class="item">
+                                                        <p>{{ item.content }}</p>
+                                                        {% if item.reports_count > 5 %}
+                                                            <span class="urgent">URGENT</span>
+                                                        {% elif item.reports_count > 2 %}
+                                                            <span class="warning">Review Soon</span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <p>No pending items</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p>No categories assigned</p>
+                        {% endif %}
+                    </div>
+                    
+                {% else %}
+                    <div class="user-panel">
+                        <h3>Your Content</h3>
+                        {% if user.posts %}
+                            {% for post in user.posts %}
+                                <article class="post">
+                                    <h4>{{ post.title }}</h4>
+                                    {% if post.is_published %}
+                                        <span class="status published">Published</span>
+                                        {% if post.views > 1000 %}
+                                            <span class="badge popular">Popular</span>
+                                            {% if post.views > 10000 %}
+                                                <span class="badge viral">Viral!</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% elif post.is_draft %}
+                                        <span class="status draft">Draft</span>
+                                        {% if post.last_edited %}
+                                            <small>Last edited: {{ post.last_edited }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="status pending">Under Review</span>
+                                    {% endif %}
+                                    
+                                    {% if post.comments %}
+                                        <div class="comments">
+                                            <h5>Comments ({{ post.comments|length }})</h5>
+                                            {% for comment in post.comments %}
+                                                {% if not comment.is_hidden %}
+                                                    <div class="comment">
+                                                        <p>{{ comment.text }}</p>
+                                                        {% if comment.author.is_verified %}
+                                                            <span class="verified">✓ Verified</span>
+                                                        {% endif %}
+                                                        
+                                                        {% if comment.replies %}
+                                                            {% for reply in comment.replies %}
+                                                                {% if reply.is_visible %}
+                                                                    <div class="reply">
+                                                                        {{ reply.text }}
+                                                                    </div>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </article>
+                            {% endfor %}
+                        {% else %}
+                            <p>You haven't created any posts yet.</p>
+                            {% if user.email_verified %}
+                                <button>Create Your First Post</button>
+                            {% else %}
+                                <div class="alert">
+                                    <p>Please verify your email before posting.</p>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+                
+                {% if user.notifications %}
+                    <div class="notifications">
+                        <h3>Notifications</h3>
+                        {% for notification in user.notifications %}
+                            {% if not notification.is_read %}
+                                <div class="notification unread">
+                                    {{ notification.message }}
+                                    {% if notification.priority == 'high' %}
+                                        <span class="priority-high">!</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="notification read">
+                                    {{ notification.message }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+            </div>
+            
+            {% if user.subscription %}
+                <div class="subscription-info">
+                    {% if user.subscription.is_premium %}
+                        <h3>Premium Member</h3>
+                        {% if user.subscription.days_remaining < 7 %}
+                            <div class="warning">
+                                <p>Your subscription expires in {{ user.subscription.days_remaining }} days</p>
+                                <button>Renew Now</button>
+                            </div>
+                        {% elif user.subscription.days_remaining < 30 %}
+                            <p>Expires in {{ user.subscription.days_remaining }} days</p>
+                        {% endif %}
+                    {% else %}
+                        <h3>Free Member</h3>
+                        <button>Upgrade to Premium</button>
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="guest-view">
+                <h2>Welcome, Guest!</h2>
+                <p>Please log in to access your dashboard</p>
+                
+                {% if features.registration_enabled %}
+                    <div class="auth-options">
+                        <button>Log In</button>
+                        {% if features.social_login %}
+                            <div class="social-login">
+                                {% for provider in social_providers %}
+                                    {% if provider.is_enabled %}
+                                        <button class="social {{ provider.name }}">
+                                            Login with {{ provider.name }}
+                                        </button>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <button>Sign Up</button>
+                    </div>
+                {% else %}
+                    <p>Registration is currently closed.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        {% if site_announcements %}
+            <div class="announcements">
+                <h3>Announcements</h3>
+                {% for announcement in site_announcements %}
+                    {% if announcement.is_active %}
+                        {% if announcement.severity == 'critical' %}
+                            <div class="announcement critical">
+                                <strong>CRITICAL:</strong> {{ announcement.message }}
+                            </div>
+                        {% elif announcement.severity == 'warning' %}
+                            <div class="announcement warning">
+                                <strong>Warning:</strong> {{ announcement.message }}
+                            </div>
+                        {% else %}
+                            <div class="announcement info">
+                                {{ announcement.message }}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
