@@ -283,6 +283,9 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
   <style>
     body { 
       font-family: monospace; 
