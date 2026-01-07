@@ -2,7 +2,7 @@
   "name": "Jinja2-Visualizer",
   "displayName": "Jinja2Visualizer",
   "description": "Visualize nested Jinja2 conditional blocks without modifying the file",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "mannubhai1",
   "repository": {
     "type": "git",
