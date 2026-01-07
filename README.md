@@ -1,10 +1,10 @@
 # Jinja2 Visualizer
 
-A VS Code extension that helps you visualize and navigate complex nested Jinja2 if/else blocks in your templates without modifying the source file.
+A VS Code extension that helps you visualize and navigate complex nested Jinja2 Conditional blocks in your templates without modifying the source file.
 
 ## Features
 
-- 🔍 **Visual representation** of nested if/else/elif blocks in Jinja2 templates
+- 🔍 **Visual representation** of nested Conditional blocks in Jinja2 templates
 - 📊 **Indented tree view** showing the structure and nesting levels
 - 🎯 **Click to navigate** - Jump directly to any block in your template
 - ✨ **Non-invasive** - View logic structure without modifying your files
@@ -57,7 +57,7 @@ This extension does not add any VS Code settings. It works out of the box with t
 
 ## Known Issues
 
-- Currently only supports `if/elif/else` blocks. Other Jinja2 constructs (for loops, macros, etc.) are not visualized.
+- Currently only supports `if/elif/else/loops` blocks. Other Jinja2 constructs (macros, etc.) are not visualized.
 - Inline if expressions are not included in the visualization.
 - Complex multiline conditions are simplified in the display.
 
@@ -66,7 +66,7 @@ This extension does not add any VS Code settings. It works out of the box with t
 ### 0.0.1
 
 Initial release of Jinja2 Visualizer
-- Basic if/else/elif block visualization
+- Basic if/else/elif/loop block visualization
 - Click-to-navigate functionality
 - Support for nested conditionals
 
