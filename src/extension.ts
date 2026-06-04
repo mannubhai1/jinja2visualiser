@@ -9,14 +9,34 @@ const blockHighlightDecoration = vscode.window.createTextEditorDecorationType({
 });
 
 export function activate(context: vscode.ExtensionContext) {
+  // Languages where Jinja2 templates are commonly used
+  const SUPPORTED_LANGUAGES = new Set([
+    'html',
+    'jinja',
+    'jinja-html',
+    'yaml',
+    'json',
+    'toml',
+    'ini',
+    'properties',
+    'shellscript',
+    'dockerfile',
+    'plaintext',
+  ]);
+
   // Set context for icon visibility based on file content
   function updateJinjaContext(editor: vscode.TextEditor | undefined) {
     if (editor) {
       const langId = editor.document.languageId;
-      if (langId === 'markdown') {
+      const fileName = editor.document.fileName;
+      const isJ2File = fileName.endsWith('.j2') || fileName.endsWith('.jinja2') || fileName.endsWith('.jinja');
+      const isSupportedLang = SUPPORTED_LANGUAGES.has(langId);
+
+      if (!isJ2File && !isSupportedLang) {
         vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', false);
         return;
       }
+
       const hasJinja = editor.document.getText().includes('{%');
       vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', hasJinja);
     } else {

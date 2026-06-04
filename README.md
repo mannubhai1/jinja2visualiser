@@ -26,9 +26,29 @@ Works with VS Code, Kiro, and other VS Code-based editors.
 
 ![Search Filter](images/search-filter.png)
 
+## Supported File Types
+
+The visualizer activates for files where Jinja2 templates are commonly used:
+
+| File Type | Extensions / Language IDs |
+|-----------|--------------------------|
+| HTML | `.html` |
+| Jinja | `.j2`, `.jinja2`, `.jinja` |
+| YAML | `.yml`, `.yaml` |
+| JSON | `.json` |
+| TOML | `.toml` |
+| Shell | `.sh`, `.bash` |
+| Dockerfile | `Dockerfile` |
+| Config files | `.ini`, `.cfg`, `.properties` |
+| Plain text | `.txt` |
+
+Files with `.j2`, `.jinja2`, or `.jinja` extensions are always supported regardless of detected language.
+
+> **Note:** Markdown, Python, JavaScript, TypeScript, and other programming languages are excluded — the extension is designed for template files where conditions lack indentation and are hard to follow visually.
+
 ## Usage
 
-1. Open any file containing Jinja2 syntax (`.html`, `.j2`, `.jinja2`, `.yml`, `.cfg`, etc.)
+1. Open any supported file containing Jinja2 syntax
 2. Click the preview icon in the top-right of the editor tab, or:
 3. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **"Jinja2: Open Visualizer"**
 
@@ -66,7 +86,7 @@ ELSE
 ## Installation
 
 Install from VSIX:
-1. Download `jinja2-visualizer-0.0.3.vsix`
+1. Download `jinja2-visualizer-0.0.4.vsix`
 2. `Cmd+Shift+P` → **"Extensions: Install from VSIX..."**
 3. Select the downloaded file
 
