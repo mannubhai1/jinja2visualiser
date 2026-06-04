@@ -1,83 +1,84 @@
 # Jinja2 Visualizer
 
-A VS Code extension that helps you visualize and navigate complex nested Jinja2 Conditional blocks in your templates without modifying the source file.
+A VS Code / Kiro extension that helps you visualize and navigate complex nested Jinja2 conditional blocks in your templates without modifying the source file.
+
+![Main View](images/main-view.png)
 
 ## Features
 
-- 🔍 **Visual representation** of nested Conditional blocks in Jinja2 templates
-- 📊 **Indented tree view** showing the structure and nesting levels
-- 🎯 **Click to navigate** - Jump directly to any block in your template
-- ✨ **Non-invasive** - View logic structure without modifying your files
-- 🚀 **Instant access** - Quick command to open the visualizer
+- 🔍 **Visual tree view** of nested if/elif/else/for blocks
+- 🎯 **Click to navigate** — jump directly to any block in your template
+- 🔦 **Block highlighting** — clicking a node highlights the entire block boundary in the editor
+- 🔎 **Search/filter** — type to filter the tree by condition text
+- 📂 **Collapse/Expand all** — bulk toggle for large templates
+- 🎨 **Theme-aware colors** — adapts to dark, light, and custom VS Code themes
+- 🖥️ **Auto-detect** — preview icon appears automatically when a file contains Jinja2 syntax
+- 📊 **Export to Mermaid** — generate a Mermaid diagram of your template logic
+- ✨ **Non-invasive** — view logic structure without modifying your files
 
-Perfect for understanding complex template logic, debugging conditionals, and maintaining large Jinja2 template files.
+Works with VS Code, Kiro, and other VS Code-based editors.
+
+### Block Highlighting
+
+![Block Highlight](images/block-highlight.png)
+
+### Search & Filter
+
+![Search Filter](images/search-filter.png)
 
 ## Usage
 
-1. Open a Jinja2 template file (`.html`, `.jinja2`, `.j2`, or any file with Jinja2 syntax)
-2. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
-3. Run the command: **"Jinja2: Open If/Else Visualizer"**
-4. View the nested structure in the output panel
-5. Click on any line in the visualizer to jump to that location in your template
+1. Open any file containing Jinja2 syntax (`.html`, `.j2`, `.jinja2`, `.yml`, `.cfg`, etc.)
+2. Click the preview icon in the top-right of the editor tab, or:
+3. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **"Jinja2: Open Visualizer"**
 
 ### Example
 
 For a template with nested conditionals like:
 ```jinja2
-{% if user.is_authenticated %}
-  {% if user.is_admin %}
-    Admin dashboard
-  {% elif user.is_moderator %}
-    Moderator panel
+{% if env == "production" %}
+  {% if feature_x %}
+    timeout: 30
+  {% elif feature_y %}
+    timeout: 20
   {% else %}
-    User dashboard
+    timeout: 10
   {% endif %}
 {% else %}
-  Please log in
+  timeout: 5
 {% endif %}
 ```
 
 The visualizer displays:
 ```
-IF user.is_authenticated (line 1)
-  IF user.is_admin (line 2)
-  ELIF user.is_moderator (line 4)
-  ELSE (line 6)
-ELSE (line 9)
+IF env == "production"
+  IF feature_x
+  ELIF feature_y
+  ELSE
+ELSE
 ```
 
 ## Requirements
 
-- VS Code version 1.85.0 or higher
+- VS Code 1.75.0+ or Kiro (any version)
 - No additional dependencies required
 
-## Extension Settings
+## Installation
 
-This extension does not add any VS Code settings. It works out of the box with the default command.
+Install from VSIX:
+1. Download `jinja2-visualizer-0.0.3.vsix`
+2. `Cmd+Shift+P` → **"Extensions: Install from VSIX..."**
+3. Select the downloaded file
 
 ## Known Issues
 
-- Currently only supports `if/elif/else/loops` blocks. Other Jinja2 constructs (macros, etc.) are not visualized.
+- Currently only supports `if/elif/else/for` blocks. Other Jinja2 constructs (macros, blocks, etc.) are not visualized.
 - Inline if expressions are not included in the visualization.
-- Complex multiline conditions are simplified in the display.
-
-## Release Notes
-
-### 0.0.1
-
-Initial release of Jinja2 Visualizer
-- Basic if/else/elif/loop block visualization
-- Click-to-navigate functionality
-- Support for nested conditionals
 
 ## Contributing
 
-Found a bug or have a feature request? Please open an issue on the [GitHub repository](https://github.com/YOUR_USERNAME/jinja2visualiser).
+Found a bug or have a feature request? Please open an issue on the [GitHub repository](https://github.com/mannubhai1/jinja2visualiser/issues).
 
 ## License
 
-[MIT](LICENSE)
-
----
-
-**Enjoy visualizing your Jinja2 templates!** 🎉
+[MIT](https://github.com/mannubhai1/jinja2visualiser/blob/main/LICENSE)

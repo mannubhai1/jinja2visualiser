@@ -1,0 +1,109 @@
+# Application Configuration
+# Generated with Jinja2 templating
+
+app:
+  name: {{ product_code }}
+  environment: {{ environment }}
+
+{% if env == "production" %}
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 4
+  {% if high_availability %}
+  replicas: 3
+  health_check:
+    interval: 10s
+    timeout: 5s
+  {% elif disaster_recovery %}
+  replicas: 2
+  backup:
+    enabled: true
+    schedule: "0 */6 * * *"
+  {% else %}
+  replicas: 1
+  {% endif %}
+{% elif env == "staging" %}
+server:
+  host: 0.0.0.0
+  port: 8080
+  workers: 2
+  replicas: 1
+{% else %}
+server:
+  host: localhost
+  port: 3000
+  workers: 1
+  debug: true
+{% endif %}
+
+database:
+  {% if db_type == "postgres" %}
+  driver: postgresql
+  host: {{ db_host }}
+  port: 5432
+    {% if ssl_enabled %}
+  ssl:
+    mode: verify-full
+    cert: /etc/ssl/db-cert.pem
+    {% endif %}
+  {% elif db_type == "mysql" %}
+  driver: mysql
+  host: {{ db_host }}
+  port: 3306
+  {% else %}
+  driver: sqlite
+  path: ./data/app.db
+  {% endif %}
+
+{% if feature_logging %}
+logging:
+  level: {{ log_level | default("INFO") }}
+  {% if log_format == "json" %}
+  format: json
+  output: stdout
+  {% else %}
+  format: text
+  output: file
+  path: /var/log/app.log
+  {% endif %}
+  {% if enable_audit_log %}
+  audit:
+    enabled: true
+    retention_days: 90
+    {% for target in audit_targets %}
+    - name: {{ target.name }}
+      type: {{ target.type }}
+    {% endfor %}
+  {% endif %}
+{% endif %}
+
+{% if feature_cache %}
+cache:
+  {% if cache_provider == "redis" %}
+  provider: redis
+  host: {{ redis_host }}
+  port: 6379
+  ttl: 3600
+  {% elif cache_provider == "memcached" %}
+  provider: memcached
+  host: {{ memcached_host }}
+  port: 11211
+  {% else %}
+  provider: memory
+  max_size: 256mb
+  {% endif %}
+{% endif %}
+
+{% for service in external_services %}
+  {% if service.enabled %}
+{{ service.name }}:
+  url: {{ service.url }}
+  timeout: {{ service.timeout | default(30) }}
+    {% if service.auth_required %}
+  auth:
+    type: {{ service.auth_type }}
+    token: {{ service.token }}
+    {% endif %}
+  {% endif %}
+{% endfor %}

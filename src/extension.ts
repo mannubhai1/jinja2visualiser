@@ -2,7 +2,39 @@ import * as vscode from 'vscode';
 
 let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
+// Decoration type for highlighting block boundaries
+const blockHighlightDecoration = vscode.window.createTextEditorDecorationType({
+  backgroundColor: 'rgba(100, 160, 255, 0.18)',
+  isWholeLine: true,
+});
+
 export function activate(context: vscode.ExtensionContext) {
+  // Set context for icon visibility based on file content
+  function updateJinjaContext(editor: vscode.TextEditor | undefined) {
+    if (editor) {
+      const langId = editor.document.languageId;
+      if (langId === 'markdown') {
+        vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', false);
+        return;
+      }
+      const hasJinja = editor.document.getText().includes('{%');
+      vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', hasJinja);
+    } else {
+      vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', false);
+    }
+  }
+
+  // Check on activation and editor changes
+  updateJinjaContext(vscode.window.activeTextEditor);
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(updateJinjaContext),
+    vscode.workspace.onDidChangeTextDocument(e => {
+      if (vscode.window.activeTextEditor && e.document === vscode.window.activeTextEditor.document) {
+        updateJinjaContext(vscode.window.activeTextEditor);
+      }
+    })
+  );
+
   const disposable = vscode.commands.registerCommand(
     'jinja2Visualizer.open',
     () => {
@@ -30,6 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         currentPanel.onDidDispose(() => {
           currentPanel = undefined;
+          editor.setDecorations(blockHighlightDecoration, []);
         });
       }
 
@@ -40,6 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
         message => {
           if (message.command === 'navigateToLine') {
             const line = message.line;
+            const endLine = message.endLine ?? line;
             const lineText = document.lineAt(line).text;
             const startChar = lineText.search(/\S/);
             const endChar = lineText.length;
@@ -47,6 +81,10 @@ export function activate(context: vscode.ExtensionContext) {
             const range = new vscode.Range(line, startChar, line, endChar);
             editor.selection = new vscode.Selection(range.start, range.end);
             editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+            
+            // Highlight the entire block boundary
+            const blockRange = new vscode.Range(line, 0, endLine, document.lineAt(endLine).text.length);
+            editor.setDecorations(blockHighlightDecoration, [blockRange]);
             
             vscode.window.showTextDocument(document, {
               viewColumn: editor.viewColumn,
@@ -218,7 +256,7 @@ function parseJinja(text: string): Node[] {
     }
     else if (endifRegex.test(line)) {
       if (stack.length) {
-        stack[stack.length - 1].endLine = i - 1;
+        stack[stack.length - 1].endLine = i;
         stack.pop();
       }
     }
@@ -243,7 +281,7 @@ function parseJinja(text: string): Node[] {
     }
     else if (endforRegex.test(line)) {
       if (stack.length) {
-        stack[stack.length - 1].endLine = i - 1;
+        stack[stack.length - 1].endLine = i;
         stack.pop();
       }
     }
@@ -312,6 +350,27 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
     .export-buttons button:hover {
       background: var(--vscode-button-hoverBackground);
     }
+    .search-container {
+      margin-bottom: 10px;
+    }
+    .search-container input {
+      width: 100%;
+      padding: 6px 10px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, transparent);
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .search-container input:focus {
+      border-color: var(--vscode-focusBorder);
+    }
+    .node-hidden {
+      display: none;
+    }
     ul { 
       list-style: none; 
       padding-left: 0; 
@@ -329,11 +388,11 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
       width: 2px;
       opacity: 0.3;
     }
-    .depth-0 { background-color: #4fc3f7; }
-    .depth-1 { background-color: #ffb74d; }
-    .depth-2 { background-color: #e57373; }
-    .depth-3 { background-color: #81c784; }
-    .depth-4 { background-color: #ba68c8; }
+    .depth-0 { background-color: var(--vscode-charts-blue, #4fc3f7); }
+    .depth-1 { background-color: var(--vscode-charts-orange, #ffb74d); }
+    .depth-2 { background-color: var(--vscode-charts-red, #e57373); }
+    .depth-3 { background-color: var(--vscode-charts-green, #81c784); }
+    .depth-4 { background-color: var(--vscode-charts-purple, #ba68c8); }
     .node-container {
       display: flex;
       align-items: center;
@@ -363,10 +422,15 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
     .node-label:hover {
       background-color: var(--vscode-list-hoverBackground);
     }
-    .if { color: #4fc3f7; }
-    .elif { color: #ffb74d; }
-    .else { color: #e57373; }
-    .for { color: #81c784; }
+    .node-label.selected {
+      background-color: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+      border-radius: 3px;
+    }
+    .if { color: var(--vscode-charts-blue, #4fc3f7); }
+    .elif { color: var(--vscode-charts-orange, #ffb74d); }
+    .else { color: var(--vscode-charts-red, #e57373); }
+    .for { color: var(--vscode-charts-green, #81c784); }
     .children {
       overflow: hidden;
       transition: max-height 0.3s ease;
@@ -383,8 +447,13 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
   <div class="header">
     <h3>Jinja2 Visualizer</h3>
     <div class="export-buttons">
+      <button onclick="collapseAll()">Collapse All</button>
+      <button onclick="expandAll()">Expand All</button>
       <button onclick="exportAs('mermaid')">Export Mermaid</button>
     </div>
+  </div>
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Filter conditions..." />
   </div>
   ${renderTree(tree)}
   
@@ -395,6 +464,30 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
       vscode.postMessage({
         command: 'export',
         format: format
+      });
+    }
+
+    function collapseAll() {
+      document.querySelectorAll('.children').forEach(el => {
+        el.classList.remove('expanded');
+        el.classList.add('collapsed');
+      });
+      document.querySelectorAll('.expand-icon').forEach(el => {
+        if (el.style.visibility !== 'hidden') {
+          el.textContent = '▶';
+        }
+      });
+    }
+
+    function expandAll() {
+      document.querySelectorAll('.children').forEach(el => {
+        el.classList.remove('collapsed');
+        el.classList.add('expanded');
+      });
+      document.querySelectorAll('.expand-icon').forEach(el => {
+        if (el.style.visibility !== 'hidden') {
+          el.textContent = '▼';
+        }
       });
     }
     
@@ -420,14 +513,56 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
       
       // Handle navigation to line
       if (target.classList.contains('node-label')) {
+        // Remove previous selection
+        document.querySelectorAll('.node-label.selected').forEach(el => el.classList.remove('selected'));
+        // Highlight selected node
+        target.classList.add('selected');
+        
         const line = parseInt(target.dataset.line);
+        const endLine = parseInt(target.dataset.endline);
         if (!isNaN(line)) {
           vscode.postMessage({
             command: 'navigateToLine',
-            line: line
+            line: line,
+            endLine: !isNaN(endLine) ? endLine : line
           });
         }
       }
+    });
+
+    // Search/filter logic
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      const allItems = document.querySelectorAll('ul li');
+      
+      if (!query) {
+        // Show everything
+        allItems.forEach(item => item.classList.remove('node-hidden'));
+        return;
+      }
+      
+      // First hide all
+      allItems.forEach(item => item.classList.add('node-hidden'));
+      
+      // Show matching nodes and their ancestors
+      allItems.forEach(item => {
+        const label = item.querySelector(':scope > .node-container > .node-label');
+        if (label && label.textContent.toLowerCase().includes(query)) {
+          // Show this node
+          item.classList.remove('node-hidden');
+          // Show all ancestors
+          let parent = item.parentElement;
+          while (parent) {
+            if (parent.tagName === 'LI') {
+              parent.classList.remove('node-hidden');
+            }
+            parent = parent.parentElement;
+          }
+          // Show all children too
+          item.querySelectorAll('li').forEach(child => child.classList.remove('node-hidden'));
+        }
+      });
     });
   </script>
 </body>
@@ -458,7 +593,7 @@ function renderTree(nodes: Node[]): string {
         <div class="depth-line ${depthClass}"></div>
         <div class="node-container">
           ${expandIcon}
-          <span class="node-label ${n.type}" data-line="${n.line}">${label}</span>
+          <span class="node-label ${n.type}" data-line="${n.line}" data-endline="${n.endLine ?? n.line}">${label}</span>
         </div>
         ${childrenHtml}
       </li>`;

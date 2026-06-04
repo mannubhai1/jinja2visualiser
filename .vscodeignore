@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+.kiro/**
 src/**
 .gitignore
 .yarnrc
@@ -9,3 +10,6 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+test-template.html
+demo-template.yml.j2
+*.vsix

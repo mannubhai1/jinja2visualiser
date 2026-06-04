@@ -1,8 +1,8 @@
 {
-  "name": "Jinja2-Visualizer",
-  "displayName": "Jinja2Visualizer",
+  "name": "jinja2-visualizer",
+  "displayName": "Jinja2 Visualizer",
   "description": "Visualize nested Jinja2 conditional blocks without modifying the file",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "mannubhai1",
   "repository": {
     "type": "git",
@@ -11,19 +11,29 @@
   "categories": ["Visualization", "Other"],
   "keywords": ["jinja2", "template", "visualization", "if-else", "for"],
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.75.0"
   },
   "activationEvents": [
-    "onCommand:jinja2Visualizer.open"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "jinja2Visualizer.open",
-        "title": "Jinja2: Open Visualizer"
+        "title": "Jinja2: Open Visualizer",
+        "icon": "$(open-preview)"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "jinja2Visualizer.open",
+          "when": "jinja2Visualizer.hasJinjaSyntax",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",
@@ -31,7 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.2",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.75.0",
     "typescript": "^5.3.0"
   }
 }
