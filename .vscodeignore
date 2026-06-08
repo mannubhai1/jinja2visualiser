@@ -12,4 +12,10 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 test-template.html
 demo-template.yml.j2
+demo-template.html.j2
+*.pdf
 *.vsix
+out-test/**
+tsconfig.test.json
+**/*.test.js
+**/*.test.ts
