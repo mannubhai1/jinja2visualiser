@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const hasJinja = editor.document.getText().includes('{%');
+      const hasJinja = /(?:#\s*)?\{%/.test(editor.document.getText());
       vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', hasJinja);
     } else {
       vscode.commands.executeCommand('setContext', 'jinja2Visualizer.hasJinjaSyntax', false);
@@ -111,7 +111,7 @@ export function activate(context: vscode.ExtensionContext) {
               preserveFocus: false
             });
           } else if (message.command === 'export') {
-            handleExport(tree, message.format);
+            handleExport(tree);
           }
         },
         undefined,
@@ -137,17 +137,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 }
 
-function handleExport(tree: Node[], format: string) {
-  if (format === 'json') {
-    const cleanTree = cleanTreeForExport(tree);
-    const json = JSON.stringify(cleanTree, null, 2);
-    vscode.workspace.openTextDocument({ content: json, language: 'json' })
-      .then(doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside));
-  } else if (format === 'mermaid') {
-    const mermaid = generateMermaid(tree);
-    vscode.workspace.openTextDocument({ content: mermaid, language: 'markdown' })
-      .then(doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside));
-  }
+function handleExport(tree: Node[]) {
+  const cleanTree = cleanTreeForExport(tree);
+  const json = JSON.stringify(cleanTree, null, 2);
+  vscode.workspace.openTextDocument({ content: json, language: 'json' })
+    .then(doc => vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside));
 }
 
 function cleanTreeForExport(nodes: Node[]): any[] {
@@ -157,35 +151,6 @@ function cleanTreeForExport(nodes: Node[]): any[] {
     condition: node.condition,
     children: cleanTreeForExport(node.children)
   }));
-}
-
-function generateMermaid(nodes: Node[], prefix = ''): string {
-  if (!nodes.length) return '';
-  
-  let result = '';
-  if (!prefix) {
-    result = 'graph TD\n';
-  }
-  
-  nodes.forEach((node, idx) => {
-    const id = prefix ? `${prefix}_${idx}` : `node${idx}`;
-    const label = node.type === 'else' ? 'else' : 
-                  node.type === 'for' ? `for ${node.condition}` :
-                  `${node.type} ${node.condition}`;
-    
-    const shape = node.type === 'for' ? `${id}[/${label}/]` : `${id}{${label}}`;
-    result += `  ${shape}\n`;
-    
-    if (node.children.length > 0) {
-      node.children.forEach((child, childIdx) => {
-        const childId = `${id}_${childIdx}`;
-        result += `  ${id} --> ${childId}\n`;
-      });
-      result += generateMermaid(node.children, id);
-    }
-  });
-  
-  return result;
 }
 
 // ------------------------------
@@ -206,12 +171,12 @@ function parseJinja(text: string): Node[] {
   const stack: Array<Node & { endLine: number }> = [];
   const root: Node[] = [];
 
-  const ifRegex = /\{%-?\s*if\s+(.*?)\s*-?%\}/;
-  const elifRegex = /\{%-?\s*elif\s+(.*?)\s*-?%\}/;
-  const elseRegex = /\{%-?\s*else\s*-?%\}/;
-  const endifRegex = /\{%-?\s*endif\s*-?%\}/;
-  const forRegex = /\{%-?\s*for\s+(.*?)\s*-?%\}/;
-  const endforRegex = /\{%-?\s*endfor\s*-?%\}/;
+  const ifRegex = /(?:#\s*)?\{%-?\s*if\s+(.*?)\s*-?%\}/;
+  const elifRegex = /(?:#\s*)?\{%-?\s*elif\s+(.*?)\s*-?%\}/;
+  const elseRegex = /(?:#\s*)?\{%-?\s*else\s*-?%\}/;
+  const endifRegex = /(?:#\s*)?\{%-?\s*endif\s*-?%\}/;
+  const forRegex = /(?:#\s*)?\{%-?\s*for\s+(.*?)\s*-?%\}/;
+  const endforRegex = /(?:#\s*)?\{%-?\s*endfor\s*-?%\}/;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -469,7 +434,6 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
     <div class="export-buttons">
       <button onclick="collapseAll()">Collapse All</button>
       <button onclick="expandAll()">Expand All</button>
-      <button onclick="exportAs('mermaid')">Export Mermaid</button>
     </div>
   </div>
   <div class="search-container">
@@ -479,13 +443,6 @@ function getWebviewContent(tree: Node[], lines: string[]): string {
   
   <script>
     const vscode = acquireVsCodeApi();
-    
-    function exportAs(format) {
-      vscode.postMessage({
-        command: 'export',
-        format: format
-      });
-    }
 
     function collapseAll() {
       document.querySelectorAll('.children').forEach(el => {
