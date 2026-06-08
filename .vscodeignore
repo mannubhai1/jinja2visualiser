@@ -19,3 +19,4 @@ out-test/**
 tsconfig.test.json
 **/*.test.js
 **/*.test.ts
+**/check-file.*

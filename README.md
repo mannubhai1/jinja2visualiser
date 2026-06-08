@@ -86,7 +86,7 @@ ELSE
 ## Installation
 
 Install from VSIX:
-1. Download `jinja2-visualizer-0.0.4.vsix`
+1. Download `jinja2-visualizer-0.0.5.vsix`
 2. `Cmd+Shift+P` → **"Extensions: Install from VSIX..."**
 3. Select the downloaded file
 
