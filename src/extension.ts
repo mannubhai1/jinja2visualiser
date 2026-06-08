@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { parseJinja, Node } from './parser';
 
 let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
@@ -55,6 +56,10 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Track disposables for message listener and change listener
+  let messageListenerDisposable: vscode.Disposable | undefined;
+  let changeListenerDisposable: vscode.Disposable | undefined;
+
   const disposable = vscode.commands.registerCommand(
     'jinja2Visualizer.open',
     () => {
@@ -82,20 +87,35 @@ export function activate(context: vscode.ExtensionContext) {
 
         currentPanel.onDidDispose(() => {
           currentPanel = undefined;
+          messageListenerDisposable?.dispose();
+          messageListenerDisposable = undefined;
+          changeListenerDisposable?.dispose();
+          changeListenerDisposable = undefined;
           editor.setDecorations(blockHighlightDecoration, []);
         });
       }
 
       currentPanel.webview.html = getWebviewContent(tree, lines);
 
+      // Dispose previous listeners before attaching new ones (prevents accumulation)
+      messageListenerDisposable?.dispose();
+      changeListenerDisposable?.dispose();
+
       // Handle messages from webview
-      currentPanel.webview.onDidReceiveMessage(
+      messageListenerDisposable = currentPanel.webview.onDidReceiveMessage(
         message => {
           if (message.command === 'navigateToLine') {
             const line = message.line;
             const endLine = message.endLine ?? line;
+            const lineCount = document.lineCount;
+
+            // Fix #9: bounds check before accessing lines
+            if (line < 0 || line >= lineCount || endLine < 0 || endLine >= lineCount) {
+              return;
+            }
+
             const lineText = document.lineAt(line).text;
-            const startChar = lineText.search(/\S/);
+            const startChar = Math.max(0, lineText.search(/\S/));
             const endChar = lineText.length;
             
             const range = new vscode.Range(line, startChar, line, endChar);
@@ -113,23 +133,17 @@ export function activate(context: vscode.ExtensionContext) {
           } else if (message.command === 'export') {
             handleExport(tree);
           }
-        },
-        undefined,
-        context.subscriptions
+        }
       );
 
       // Auto-refresh on file changes
-      const changeDisposable = vscode.workspace.onDidChangeTextDocument(e => {
+      changeListenerDisposable = vscode.workspace.onDidChangeTextDocument(e => {
         if (e.document === document && currentPanel) {
           const updatedText = e.document.getText();
           const updatedLines = updatedText.split(/\r?\n/);
           const updatedTree = parseJinja(updatedText);
           currentPanel.webview.html = getWebviewContent(updatedTree, updatedLines);
         }
-      });
-
-      currentPanel.onDidDispose(() => {
-        changeDisposable.dispose();
       });
     }
   );
@@ -154,155 +168,9 @@ function cleanTreeForExport(nodes: Node[]): any[] {
 }
 
 // ------------------------------
-// Jinja2 parsing (simple & safe)
-// ------------------------------
-interface Node {
-  type: 'if' | 'elif' | 'else' | 'for';
-  condition?: string;
-  children: Node[];
-  line: number;
-  endLine?: number;
-  contentPreview?: string;
-  depth: number;
-}
-
-function parseJinja(text: string): Node[] {
-  const lines = text.split(/\r?\n/);
-  const stack: Array<Node & { endLine: number }> = [];
-  const root: Node[] = [];
-
-  const ifRegex = /(?:#\s*)?\{%-?\s*if\s+(.*?)\s*-?%\}/;
-  const elifRegex = /(?:#\s*)?\{%-?\s*elif\s+(.*?)\s*-?%\}/;
-  const elseRegex = /(?:#\s*)?\{%-?\s*else\s*-?%\}/;
-  const endifRegex = /(?:#\s*)?\{%-?\s*endif\s*-?%\}/;
-  const forRegex = /(?:#\s*)?\{%-?\s*for\s+(.*?)\s*-?%\}/;
-  const endforRegex = /(?:#\s*)?\{%-?\s*endfor\s*-?%\}/;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const depth = stack.length;
-    
-    if (ifRegex.test(line)) {
-      const condition = line.match(ifRegex)?.[1] ?? '';
-      const node: Node & { endLine: number } = { 
-        type: 'if', 
-        condition, 
-        children: [], 
-        line: i, 
-        endLine: i,
-        depth,
-        contentPreview: getContentPreview(lines, i)
-      };
-
-      if (stack.length) {
-        stack[stack.length - 1].children.push(node);
-      } else {
-        root.push(node);
-      }
-      stack.push(node);
-    }
-    else if (elifRegex.test(line)) {
-      if (stack.length) {
-        stack[stack.length - 1].endLine = i - 1;
-        stack.pop();
-      }
-      const condition = line.match(elifRegex)?.[1] ?? '';
-      const node: Node & { endLine: number } = { 
-        type: 'elif', 
-        condition, 
-        children: [], 
-        line: i, 
-        endLine: i,
-        depth,
-        contentPreview: getContentPreview(lines, i)
-      };
-      if (stack.length) {
-        stack[stack.length - 1].children.push(node);
-      }
-      stack.push(node);
-    }
-    else if (elseRegex.test(line)) {
-      if (stack.length) {
-        stack[stack.length - 1].endLine = i - 1;
-        stack.pop();
-      }
-      const node: Node & { endLine: number } = { 
-        type: 'else', 
-        children: [], 
-        line: i, 
-        endLine: i,
-        depth,
-        contentPreview: getContentPreview(lines, i)
-      };
-      if (stack.length) {
-        stack[stack.length - 1].children.push(node);
-      }
-      stack.push(node);
-    }
-    else if (endifRegex.test(line)) {
-      if (stack.length) {
-        stack[stack.length - 1].endLine = i;
-        stack.pop();
-      }
-    }
-    else if (forRegex.test(line)) {
-      const condition = line.match(forRegex)?.[1] ?? '';
-      const node: Node & { endLine: number } = { 
-        type: 'for', 
-        condition, 
-        children: [], 
-        line: i, 
-        endLine: i,
-        depth,
-        contentPreview: getContentPreview(lines, i)
-      };
-
-      if (stack.length) {
-        stack[stack.length - 1].children.push(node);
-      } else {
-        root.push(node);
-      }
-      stack.push(node);
-    }
-    else if (endforRegex.test(line)) {
-      if (stack.length) {
-        stack[stack.length - 1].endLine = i;
-        stack.pop();
-      }
-    }
-  }
-
-  return root;
-}
-
-function getContentPreview(lines: string[], startLine: number): string {
-  const previewLines: string[] = [];
-  let count = 0;
-  const maxLines = 3;
-  
-  for (let i = startLine + 1; i < lines.length && count < maxLines; i++) {
-    const line = lines[i].trim();
-    if (line && !line.startsWith('{%') && !line.startsWith('{#')) {
-      previewLines.push(lines[i].trim());
-      count++;
-    }
-  }
-  
-  return previewLines.join('\n') || 'No content';
-}
-
-function highlightCondition(condition: string): string {
-  // Don't escape - apply highlighting directly to raw condition text
-  return condition
-    .replace(/\b(and|or|not|in|is|true|false|none|defined)\b/gi, '<span class="keyword">$1</span>')
-    .replace(/(['"])(.*?)\1/g, '<span class="string">$1$2$1</span>')
-    .replace(/([=!<>]+)/g, '<span class="operator">$1</span>');
-}
-
-// ------------------------------
 // Webview HTML
 // ------------------------------
-function getWebviewContent(tree: Node[], lines: string[]): string {
+function getWebviewContent(tree: Node[], _lines: string[]): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
